@@ -8,6 +8,7 @@ import java.util.List;
 
 /** The selectable image suffixes packaged by the supported VoxelMap dependency. */
 public final class VoxelMapIconIds {
+    private static final String ITEM_PREFIX = "server_waypoint_item/";
     private static final NamespacedId DEFAULT = new NamespacedId("voxelmap", "waypoint");
     private static final List<NamespacedId> IDS = java.util.stream.Stream.concat(
             java.util.stream.Stream.of(DEFAULT),
@@ -25,9 +26,13 @@ public final class VoxelMapIconIds {
     }
 
     public static String toSuffix(@Nullable NamespacedId icon) {
-        return icon != null && icon.namespace().equals("voxelmap")
-                && WaypointIconPolicy.voxelMapSuffixes().contains(icon.path())
-                ? icon.path() : "";
+        if (icon == null) {
+            return "";
+        }
+        if (icon.namespace().equals("voxelmap")) {
+            return WaypointIconPolicy.voxelMapSuffixes().contains(icon.path()) ? icon.path() : "";
+        }
+        return ITEM_PREFIX + icon;
     }
 
     public static List<NamespacedId> ids() {

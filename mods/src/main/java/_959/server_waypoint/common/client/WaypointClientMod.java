@@ -629,6 +629,10 @@ public class WaypointClientMod extends WaypointFilesManagerCore implements Messa
         WaypointManagerScreen.updateAllWidgets();
         if (!updates.isEmpty()) {
             MapModIntegrations.onClientWaypointSync(ClientWaypointSyncEvent.allSynced(), this);
+        } else {
+            // The Server Waypoint cache can already match the server while VoxelMap's separate
+            // .points file is stale or missing, so an unchanged handshake must still reconcile it.
+            MapModIntegrations.onUnchangedClientWaypointSync(this);
         }
     }
 

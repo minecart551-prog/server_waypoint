@@ -11,7 +11,8 @@ class VoxelMapIconIdsTest {
         assertEquals(NamespacedId.parse("voxelmap:star"), VoxelMapIconIds.fromSuffix("star"));
         assertEquals(NamespacedId.parse("voxelmap:waypoint"), VoxelMapIconIds.fromSuffix(""));
         assertEquals("star", VoxelMapIconIds.toSuffix(NamespacedId.parse("voxelmap:star")));
-        assertEquals("", VoxelMapIconIds.toSuffix(NamespacedId.parse("minecraft:diamond")));
+        assertEquals("server_waypoint_item/minecraft:diamond",
+                VoxelMapIconIds.toSuffix(NamespacedId.parse("minecraft:diamond")));
         assertEquals("", VoxelMapIconIds.toSuffix(null));
         assertEquals("", VoxelMapIconIds.toSuffix(NamespacedId.parse("voxelmap:missing")));
         assertNull(VoxelMapIconIds.fromSuffix("../star"));

@@ -44,6 +44,11 @@ public final class VoxelMapWaypointHelper {
     private VoxelMapWaypointHelper() {
     }
 
+    public static boolean isReady() {
+        VoxelMap voxelMap = VoxelConstants.getVoxelMapInstance();
+        return voxelMap != null && voxelMap.getWaypointManager() != null;
+    }
+
     /** Resolves a tracked marker to its complete server snapshot, including its owning dimension. */
     public static @Nullable SyncedEditTarget resolveSyncedEditTarget(
             Waypoint waypoint, WaypointFilesManagerCore waypointFiles

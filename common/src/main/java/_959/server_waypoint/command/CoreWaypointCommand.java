@@ -143,6 +143,7 @@ public abstract class CoreWaypointCommand<S, K, P, D, B, I> {
     private final SuggestionProvider<S> HEX_COLOR_CODE_SUGGESTION = new HexColorCodeSuggestion();
     private final SuggestionProvider<S> ICON_SUGGESTION = this::suggestIconIds;
     public static final String WAYPOINT_COMMAND = "wp";
+    public static final String SERVER_WAYPOINT_COMMAND = "serverwp";
     public static final String HELP_COMMAND = "help";
     public static final String ADD_COMMAND = "add";
     public static final String EDIT_COMMAND = "edit";
@@ -2522,6 +2523,7 @@ public abstract class CoreWaypointCommand<S, K, P, D, B, I> {
         PlayerActionLog.Context actor = actor(source);
         executeByServer(source, () -> {
             this.waypointServer.reload();
+            this.sender.broadcastChunkedMessage(this.waypointServer.toWorldReplacementData());
             PlayerActionLog.log(actor, "reload", "completed");
             this.sender.sendMessage(source, Results.reloaded(getExternalLoadedLanguages()));
         });
@@ -2551,7 +2553,11 @@ public abstract class CoreWaypointCommand<S, K, P, D, B, I> {
     }
 
     public void register(@NotNull CommandDispatcher<S> dispatcher) {
-        dispatcher.getRoot().addChild(build());
+        LiteralCommandNode<S> waypointCommand = build();
+        dispatcher.getRoot().addChild(waypointCommand);
+        dispatcher.getRoot().addChild(LiteralArgumentBuilder.<S>literal(SERVER_WAYPOINT_COMMAND)
+                .redirect(waypointCommand)
+                .build());
         dispatcher.getRoot().addChild(buildKeyGenerationCommand());
     }
 

@@ -237,7 +237,21 @@ public abstract class WaypointServerCore extends WaypointFilesManagerCore {
             }
             initOrReadConfigFile(this.configDir);
             this.languageFilesManager.reloadExternalLanguages();
+            this.reloadWaypointFilesFromDisk();
         });
+    }
+
+    /**
+     * Replaces the live waypoint model with the files currently on disk. This deliberately does
+     * not save first: an administrator may have edited those files immediately before reloading.
+     */
+    private void reloadWaypointFilesFromDisk() {
+        try {
+            initOrReadWaypointFiles();
+        } catch (IOException e) {
+            LOGGER.error("Failed to load waypoint files", e);
+            throw new RuntimeException(e);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -247,14 +261,17 @@ public abstract class WaypointServerCore extends WaypointFilesManagerCore {
                 LOGGER.warn("Ignoring waypoint reload because server resources are not loaded");
                 return;
             }
-            saveAllFiles();
-            try {
-                initOrReadWaypointFiles();
-            } catch (IOException e) {
-                LOGGER.error("Failed to load waypoints file", e);
-                throw new RuntimeException(e);
-            }
+            this.reloadWaypointFilesFromDisk();
         });
+    }
+
+    /** Full replacement snapshot, including an empty world used to clear connected clients. */
+    public WaypointData toWorldReplacementData() {
+        return this.readLifecycle(() -> WaypointData.world(this.fileManagerMap.values().stream()
+                .filter(Objects::nonNull)
+                .filter(fileManager -> !fileManager.hasNoWaypoints())
+                .map(WaypointFileManager::toDimensionWaypointData)
+                .toList()));
     }
 
     /**

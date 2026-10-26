@@ -38,6 +38,21 @@ public final class MapModIntegrations {
         }
     }
 
+    /**
+     * Reconciles VoxelMap after an unchanged handshake. Server Waypoint's cache may be current while
+     * VoxelMap's separate .points file is stale; other integrations keep their existing behavior.
+     */
+    public static void onUnchangedClientWaypointSync(WaypointClientMod waypointClientMod) {
+        ClientConfig clientConfig = WaypointClientMod.getClientConfig();
+        if (clientConfig == null) {
+            return;
+        }
+        find(UploadTarget.VOXELMAP)
+                .filter(integration -> integration.isEnabled(clientConfig))
+                .filter(MapModIntegration::isReady)
+                .ifPresent(integration -> integration.onClientWaypointSync(
+                        ClientWaypointSyncEvent.allSynced(), waypointClientMod));
+    }
     /** Manual recovery ignores auto-sync preferences and always rewrites installed, ready maps. */
     public static void onClientWaypointDownload(ClientWaypointSyncEvent event, WaypointClientMod waypointClientMod) {
         for (MapModIntegration integration : INTEGRATIONS) {
