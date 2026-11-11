@@ -2,7 +2,6 @@
 package _959.server_waypoint.common.client.integrations;
 
 import _959.server_waypoint.common.util.SyncedWaypointName;
-import _959.server_waypoint.common.client.WaypointClientMod;
 import _959.server_waypoint.core.WaypointFilesManagerCore;
 import _959.server_waypoint.core.waypoint.SimpleWaypoint;
 import _959.server_waypoint.core.waypoint.WaypointList;
@@ -13,7 +12,7 @@ import com.mamiyaotaru.voxelmap.util.DimensionContainer;
 import com.mamiyaotaru.voxelmap.util.Waypoint;
 import java.nio.file.Path;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
@@ -25,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VoxelMapWaypointEditTargetTest {
     @TempDir
@@ -32,56 +32,60 @@ class VoxelMapWaypointEditTargetTest {
 
     @Test
     void localEditContinuesThroughVoxelMapsOwnEditor() throws ReflectiveOperationException {
-        var handler = VoxelMapGuiWaypointsMixin.class.getDeclaredMethod(
-                "sw$redirectEditGui", Waypoint.class, CallbackInfo.class);
-        handler.setAccessible(true);
-        CallbackInfo callback = new CallbackInfo("editWaypoint", true);
-
-        handler.invoke(new VoxelMapGuiWaypointsMixin(), waypoint("Local home", "overworld"), callback);
+        CallbackInfo callback = invokeEditHandler(waypoint("Local home", "overworld"));
 
         assertFalse(callback.isCancelled());
     }
 
     @Test
-    void staleSyncedEditContinuesThroughVoxelMapsOwnEditor() throws ReflectiveOperationException {
-        assertNativeEditContinues(waypoint("sw\u241FBases\u241FMissing", "the_nether"));
+    void localDeleteOpensVoxelMapsOwnConfirmScreen() throws ReflectiveOperationException {
+        CallbackInfo callback = invokeDeleteHandler(waypoint("Local home", "overworld"));
+
+        assertFalse(callback.isCancelled());
     }
 
     @Test
-    void ambiguousSyncedEditContinuesThroughVoxelMapsOwnEditor() throws ReflectiveOperationException {
-        assertNativeEditContinues(waypoint("sw\u241FBases\u241FHome", "overworld", "the_nether"));
+    void syncedDeleteIsBlockedOnTheClient() throws ReflectiveOperationException {
+        CallbackInfo callback = invokeDeleteHandler(
+                waypoint(SyncedWaypointName.format("Bases", "Home"), "overworld"));
+
+        assertTrue(callback.isCancelled());
     }
 
-    private void assertNativeEditContinues(Waypoint selected) throws ReflectiveOperationException {
-        // Skip the client's renderer/network constructor, but use a fully initialized real waypoint store.
-        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-        Field unsafeField = unsafeClass.getDeclaredField("theUnsafe");
-        unsafeField.setAccessible(true);
-        WaypointClientMod client = (WaypointClientMod) unsafeClass.getMethod("allocateInstance", Class.class)
-                .invoke(unsafeField.get(null), WaypointClientMod.class);
-        WaypointFilesManagerCore files = files();
-        for (Field field : WaypointFilesManagerCore.class.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                field.setAccessible(true);
-                field.set(client, field.get(files));
-            }
-        }
-        Field instance = WaypointClientMod.class.getDeclaredField("INSTANCE");
-        instance.setAccessible(true);
-        Object previous = instance.get(null);
-        try {
-            instance.set(null, client);
-            var handler = VoxelMapGuiWaypointsMixin.class.getDeclaredMethod(
-                    "sw$redirectEditGui", Waypoint.class, CallbackInfo.class);
-            handler.setAccessible(true);
-            CallbackInfo callback = new CallbackInfo("editWaypoint", true);
+    @Test
+    void staleSyncedEditIsBlockedOnTheClient() throws ReflectiveOperationException {
+        assertTrue(invokeEditHandler(waypoint("sw\u241FBases\u241FMissing", "the_nether")).isCancelled());
+    }
 
-            handler.invoke(new VoxelMapGuiWaypointsMixin(), selected, callback);
+    @Test
+    void ambiguousSyncedEditIsBlockedOnTheClient() throws ReflectiveOperationException {
+        assertTrue(invokeEditHandler(waypoint("sw\u241FBases\u241FHome", "overworld", "the_nether")).isCancelled());
+    }
 
-            assertFalse(callback.isCancelled(), "An unresolved marker must not silently swallow the native Edit action");
-        } finally {
-            instance.set(null, previous);
-        }
+    private static CallbackInfo invokeEditHandler(Waypoint waypoint) throws ReflectiveOperationException {
+        Method handler = VoxelMapGuiWaypointsMixin.class.getDeclaredMethod(
+                "sw$blockServerWaypointEdit", Waypoint.class, CallbackInfo.class);
+        handler.setAccessible(true);
+        CallbackInfo callback = new CallbackInfo("editWaypoint", true);
+
+        handler.invoke(new VoxelMapGuiWaypointsMixin(), waypoint, callback);
+
+        return callback;
+    }
+
+    private static CallbackInfo invokeDeleteHandler(Waypoint waypoint) throws ReflectiveOperationException {
+        Method handler = VoxelMapGuiWaypointsMixin.class.getDeclaredMethod(
+                "sw$blockServerWaypointDelete", CallbackInfo.class);
+        handler.setAccessible(true);
+        Field selectedWaypoint = VoxelMapGuiWaypointsMixin.class.getDeclaredField("selectedWaypoint");
+        selectedWaypoint.setAccessible(true);
+        VoxelMapGuiWaypointsMixin mixin = new VoxelMapGuiWaypointsMixin();
+        selectedWaypoint.set(mixin, waypoint);
+        CallbackInfo callback = new CallbackInfo("deleteClicked", true);
+
+        handler.invoke(mixin, callback);
+
+        return callback;
     }
 
     @Test

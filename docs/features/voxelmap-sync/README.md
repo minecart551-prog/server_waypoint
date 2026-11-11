@@ -7,3 +7,4 @@ Status: implemented 2026-10-07; the Gradle builds, tests and live checks are sti
 
 - [Forge and NeoForge design](specs/2026-10-07-voxelmap-forge-neoforge-design.md)
 - [Validation record](validation/2026-10-07-voxelmap-forge-neoforge.md)
+- [Item icons on the maps (1.20.1 Fabric)](validation/2026-10-25-voxelmap-item-icons.md)
